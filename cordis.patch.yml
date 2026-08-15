@@ -1,0 +1,34 @@
+# dsh-mindforge configuration patch
+# Apply with: dsh plugin --profile web add "link:/path/to/dsh-mindforge"
+
+mindforge:
+  # Path to MindForge CLI (pip install MindForge, or full path to executable)
+  cliPath: MindForge
+
+  # Database path (defaults to ~/.MindForge/data/store/memory.db)
+  # dbPath: ~/.MindForge/data/store/memory.db
+
+  # Encryption key file (defaults to ~/.MindForge/data/store/key.bin)
+  # keyFile: ~/.MindForge/data/store/key.bin
+
+  # Storage scope: global | workspace | custom
+  storageScope: global
+
+  # Auto-inject relevant memories before each model step
+  injectOnStep: true
+
+  # Maximum tokens for injected memory context
+  maxContextTokens: 2048
+
+  # Tools registered on ctx.tools (model-callable)
+  tools:
+    - memory_add
+    - memory_search
+    - memory_context
+    - memory_stats
+    - memory_recall
+    - memory_reflection
+    - memory_reinforce
+    - memory_lineage
+    - graph_query
+    - rerank_search
