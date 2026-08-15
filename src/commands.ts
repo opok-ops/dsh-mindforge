@@ -91,7 +91,7 @@ function formatSearchResults(results: any, title: string): string {
     '',
   ];
   for (const chunk of results.chunks) {
-    lines.push(`**[${chunk.relevance_score?.toFixed(3) ?? '?'}]** ${chunk.content.slice(0, 200)}`);
+    lines.push(`**[${chunk.relevance_score?.toFixed(3) ?? '?'}]** ${chunk.content?.slice(0, 200) ?? ''}`);
     if (chunk.tags?.length) lines.push(`  _tags: ${chunk.tags.join(', ')}_`);
     lines.push('');
   }
