@@ -16,7 +16,7 @@ describe('MindForgeBridge', () => {
     expect(bridge).toBeInstanceOf(MindForgeBridge);
   });
 
-  it('should build args with db-path and json flag', () => {
+  it('should build args with db-path and json flag before subcommand', () => {
     // Access private method via type assertion
     const b = bridge as any;
     const args = b.buildArgs(['add', 'hello']);
@@ -25,6 +25,10 @@ describe('MindForgeBridge', () => {
     expect(args).toContain('--json');
     expect(args).toContain('add');
     expect(args).toContain('hello');
+    // --json must come before the subcommand (argparse global flag)
+    const jsonIdx = args.indexOf('--json');
+    const subcmdIdx = args.indexOf('add');
+    expect(jsonIdx).toBeLessThan(subcmdIdx);
   });
 
   it('should handle key-file in args', () => {

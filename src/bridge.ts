@@ -28,7 +28,7 @@ export class MindForgeBridge {
     if (this.keyFile) {
       args.push('--key-file', this.keyFile);
     }
-    return [...args, ...extra, '--json'];
+    return [...args, '--json', ...extra];
   }
 
   async execute(args: string[]): Promise<unknown> {
