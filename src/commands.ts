@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis';
 import type { MindForgeBridge } from './bridge.js';
-import type { MindForgeConfig } from './types.js';
+import type { MindForgeConfig, StatsResponse } from './types.js';
 
 export function registerCommands(
   ctx: Context,
@@ -69,16 +69,17 @@ export function registerCommands(
   return () => disposers.forEach((d) => d());
 }
 
-function formatStats(stats: any): string {
+function formatStats(stats: StatsResponse): string {
   const lines = [
     '**MindForge Memory Status**',
     `Total memories: **${stats.total ?? 'N/A'}**`,
+    `Starred: ${stats.starred_count ?? 0} · Pinned: ${stats.pinned_count ?? 0} · Trash: ${stats.trash_count ?? 0}`,
     '',
     '**Categories:**',
-    ...Object.entries(stats.top_categories ?? stats.categories ?? {}).map(([k, v]) => `  ${k}: ${v}`),
+    ...Object.entries(stats.top_categories ?? {}).map(([k, v]) => `  ${k}: ${v}`),
     '',
     '**Layers:**',
-    ...Object.entries(stats.by_layer ?? stats.layers ?? {}).map(([k, v]) => `  ${k}: ${v}`),
+    ...Object.entries(stats.by_layer ?? {}).map(([k, v]) => `  ${k}: ${v}`),
   ];
   return lines.join('\n');
 }

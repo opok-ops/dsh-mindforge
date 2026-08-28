@@ -15,6 +15,9 @@ mindforge:
   # (v0.2.0: 必须与 MindForge 记录记忆的 source_agent 一致才能召回)
   agentId: default
 
+  # CLI 子进程超时（毫秒）。大库的 memory-context 可能较慢，可按需调大。
+  timeoutMs: 30000
+
   # Storage scope: global | workspace | custom
   storageScope: global
 

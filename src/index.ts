@@ -16,6 +16,7 @@ export function apply(ctx: Context, userConfig?: Partial<MindForgeConfig>) {
     dbPath: config.dbPath,
     keyFile: config.keyFile,
     agentId: config.agentId,
+    timeoutMs: config.timeoutMs,
   });
 
   ctx.effect(() => registerTools(ctx, bridge, config));

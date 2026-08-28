@@ -5,6 +5,7 @@ export const DEFAULT_CONFIG: MindForgeConfig = {
   dbPath: undefined,
   keyFile: undefined,
   agentId: 'default',
+  timeoutMs: 30000,
   storageScope: 'global',
   injectOnStep: true,
   maxContextTokens: 2048,

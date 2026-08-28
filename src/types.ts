@@ -4,6 +4,8 @@ export interface MindForgeConfig {
   keyFile?: string;
   /** Agent ID（v0.2.0 新增，用于 memory-context/recall/reflection/reinforce 的 positional agent 参数） */
   agentId?: string;
+  /** CLI 子进程超时（毫秒，v0.2.1 新增；大库的 memory-context 可能较慢，默认 30000） */
+  timeoutMs?: number;
   storageScope: 'global' | 'workspace' | 'custom';
   injectOnStep: boolean;
   maxContextTokens: number;
@@ -41,10 +43,16 @@ export interface SearchResponse {
 
 export interface StatsResponse {
   total: number;
-  categories: Record<string, number>;
-  layers: Record<string, number>;
-  importance_levels: Record<string, number>;
-  tags: Record<string, number>;
+  trash_count: number;
+  db_size_bytes: number;
+  by_privacy: Record<string, number>;
+  by_layer: Record<string, number>;
+  by_importance: Record<string, number>;
+  top_categories: Record<string, number>;
+  starred_count: number;
+  pinned_count: number;
+  top_tags: Record<string, number>;
+  db_path: string;
 }
 
 export interface ContextResponse {

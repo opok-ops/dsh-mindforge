@@ -55,6 +55,25 @@ describe('MindForgeBridge', () => {
     expect(b.agentId).toBe('my-agent');
   });
 
+  it('should default timeoutMs to 30000', () => {
+    const b = bridge as any;
+    expect(b.timeoutMs).toBe(30000);
+  });
+
+  it('should accept custom timeoutMs', () => {
+    const b = new MindForgeBridge({
+      cliPath: 'MindForge',
+      timeoutMs: 60000,
+    }) as any;
+    expect(b.timeoutMs).toBe(60000);
+  });
+
+  it('should resolve timeoutMs from config', () => {
+    const cfg = resolveConfig({ timeoutMs: 45000 });
+    expect(cfg.timeoutMs).toBe(45000);
+    expect(DEFAULT_CONFIG.timeoutMs).toBe(30000);
+  });
+
   // ---- importance 映射 ----
   it('should map numeric importance 1-10 to CLI enums', () => {
     const b = bridge as any;
@@ -206,6 +225,20 @@ describe('MindForgeBridge', () => {
     expect(result.chunks).toHaveLength(1);
     expect(result.chunks[0].memory_id).toBe('m1');
     expect(result.chunks[0].relevance_score).toBe(0.5);
+  });
+
+  it('should pass through rerank category/layer/tags metadata', async () => {
+    vi.spyOn(bridge as any, 'execute').mockResolvedValue({
+      reranked_count: 1,
+      reranked: [{
+        memory_id: 'm1', fused_score: 0.5, content: '内容',
+        category: 'probe', layer: 'short_term', tags: ['p2', 'tag2'],
+      }],
+    });
+    const result = await bridge.rerank('q');
+    expect(result.chunks[0].category).toBe('probe');
+    expect(result.chunks[0].layer).toBe('short_term');
+    expect(result.chunks[0].tags).toEqual(['p2', 'tag2']);
   });
 
   it('should build delete args with --force', () => {

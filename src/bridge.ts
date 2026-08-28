@@ -26,17 +26,20 @@ export class MindForgeBridge {
   private dbPath?: string;
   private keyFile?: string;
   private agentId: string;
+  private timeoutMs: number;
 
   constructor(opts: {
     cliPath: string;
     dbPath?: string;
     keyFile?: string;
     agentId?: string;
+    timeoutMs?: number;
   }) {
     this.cliPath = opts.cliPath;
     this.dbPath = opts.dbPath;
     this.keyFile = opts.keyFile;
     this.agentId = opts.agentId || 'default';
+    this.timeoutMs = opts.timeoutMs ?? 30000;
   }
 
   /** 构造全局参数（--db-path / --key-file 必须位于子命令之前） */
@@ -95,8 +98,8 @@ export class MindForgeBridge {
 
       const timeout = setTimeout(() => {
         proc.kill('SIGTERM');
-        reject(new Error('MindForge CLI timeout (30s)'));
-      }, 30000);
+        reject(new Error(`MindForge CLI timeout (${this.timeoutMs}ms)`));
+      }, this.timeoutMs);
 
       proc.on('close', (code: number) => {
         clearTimeout(timeout);
@@ -234,7 +237,8 @@ export class MindForgeBridge {
       category: r.category ?? '',
       layer: r.layer ?? '',
       relevance_score: r.fused_score ?? r.original_score ?? 0,
-      tags: [],
+      // v0.2.1 fix(P2-2): CLI rerank-search 现返回 tags，不再硬编码空数组
+      tags: r.tags ?? [],
     }));
     return {
       chunks,
