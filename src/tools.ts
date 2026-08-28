@@ -12,7 +12,7 @@ const TOOLS: Record<string, Omit<ToolDefinition, 'handler'>> = {
         content: { type: 'string', description: 'The memory content to store' },
         category: { type: 'string', description: 'Category (e.g. fact, preference, event)', default: 'general' },
         tags: { type: 'array', items: { type: 'string' }, description: 'Tags for retrieval' },
-        importance: { type: 'integer', minimum: 1, maximum: 10, default: 5 },
+        importance: { type: 'integer', minimum: 1, maximum: 10, default: 5, description: 'Importance 1-10 (mapped to LOW/MEDIUM/HIGH/CRITICAL)' },
         layer: { type: 'string', enum: ['sensory', 'short_term', 'long_term', 'permanent'], default: 'long_term' },
       },
       required: ['content'],

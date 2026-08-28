@@ -11,6 +11,10 @@ mindforge:
   # Encryption key file (defaults to ~/.MindForge/data/store/key.bin)
   # keyFile: ~/.MindForge/data/store/key.bin
 
+  # Agent ID used for memory-add/context/recall/reflection/reinforce
+  # (v0.2.0: 必须与 MindForge 记录记忆的 source_agent 一致才能召回)
+  agentId: default
+
   # Storage scope: global | workspace | custom
   storageScope: global
 

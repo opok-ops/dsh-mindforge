@@ -94,6 +94,7 @@ mindforge:
   cliPath: MindForge          # or full path to executable
   # dbPath: ~/.MindForge/data/store/memory.db
   # keyFile: ~/.MindForge/data/store/key.bin
+  agentId: default            # agent id used for add/context/recall/reflection/reinforce
   storageScope: global         # global | workspace | custom
   injectOnStep: true           # auto-inject memories before each model step
   maxContextTokens: 2048

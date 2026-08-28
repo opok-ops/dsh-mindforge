@@ -2,6 +2,8 @@ export interface MindForgeConfig {
   cliPath: string;
   dbPath?: string;
   keyFile?: string;
+  /** Agent ID（v0.2.0 新增，用于 memory-context/recall/reflection/reinforce 的 positional agent 参数） */
+  agentId?: string;
   storageScope: 'global' | 'workspace' | 'custom';
   injectOnStep: boolean;
   maxContextTokens: number;
@@ -49,6 +51,75 @@ export interface ContextResponse {
   context: string;
   token_estimate: number;
   memories_used: number;
+}
+
+/**
+ * memory-context CLI 原始返回结构（v0.2.0 新增）
+ * CLI 返回 included_count/excluded_count，需映射为 ContextResponse.memories_used
+ */
+export interface ContextRawResponse {
+  agent_id?: string;
+  query?: string;
+  context?: string;
+  included_count?: number;
+  excluded_count?: number;
+  token_estimate?: number;
+  max_tokens?: number;
+  memories_used?: number;
+}
+
+/**
+ * memory-recall CLI 原始返回结构（v0.2.0 新增）
+ * CLI 返回 recalled 数组，需映射为 SearchResponse.chunks
+ */
+export interface RecallItem {
+  memory_id?: string;
+  score?: number;
+  coverage?: number;
+  matched_keywords?: string[];
+  importance?: string;
+  access_count?: number;
+  starred?: boolean;
+  age_days?: number;
+  category?: string;
+  layer?: string;
+  content_preview?: string;
+}
+
+export interface RecallRawResponse {
+  agent_id?: string;
+  query?: string;
+  query_keywords?: string[];
+  total_scanned?: number;
+  total_matched?: number;
+  returned?: number;
+  recalled?: RecallItem[];
+  avg_score?: number;
+}
+
+/**
+ * rerank-search CLI 原始返回结构（v0.2.0 新增）
+ * CLI 返回 reranked 数组，需映射为 SearchResponse.chunks
+ */
+export interface RerankItem {
+  memory_id?: string;
+  original_score?: number;
+  rerank_score?: number;
+  fused_score?: number;
+  rank_before?: number;
+  rank_after?: number;
+  delta_rank?: number;
+  content?: string;
+  category?: string;
+  layer?: string;
+  tags?: string[];
+}
+
+export interface RerankRawResponse {
+  query_original?: string;
+  initial_count?: number;
+  reranked_count?: number;
+  reranked?: RerankItem[];
 }
 
 export interface ToolDefinition {

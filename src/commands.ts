@@ -75,10 +75,10 @@ function formatStats(stats: any): string {
     `Total memories: **${stats.total ?? 'N/A'}**`,
     '',
     '**Categories:**',
-    ...Object.entries(stats.categories ?? {}).map(([k, v]) => `  ${k}: ${v}`),
+    ...Object.entries(stats.top_categories ?? stats.categories ?? {}).map(([k, v]) => `  ${k}: ${v}`),
     '',
     '**Layers:**',
-    ...Object.entries(stats.layers ?? {}).map(([k, v]) => `  ${k}: ${v}`),
+    ...Object.entries(stats.by_layer ?? stats.layers ?? {}).map(([k, v]) => `  ${k}: ${v}`),
   ];
   return lines.join('\n');
 }

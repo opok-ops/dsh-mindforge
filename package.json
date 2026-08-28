@@ -1,6 +1,6 @@
 {
   "name": "dsh-mindforge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Encrypted 4-layer lifelong memory for DeepSeek Harness — powered by MindForge",
   "type": "module",
   "main": "lib/index.js",
@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": ">=1.0.0",
+    "@types/node": "^22.0.0",
     "tsdown": "^0.12.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
