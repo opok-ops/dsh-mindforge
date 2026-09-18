@@ -6,6 +6,7 @@
 [![dsh-plugin](https://img.shields.io/badge/DSH-Plugin-purple.svg)](https://github.com/topics/dsh-plugin)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Node 22+](https://img.shields.io/badge/Node-22+-green.svg)](https://nodejs.org/)
+[![MindForge Stars](https://img.shields.io/github/stars/opok-ops/MindForge.svg?label=MindForge%20%E2%AD%90)](https://github.com/opok-ops/MindForge/stargazers)
 
 ## Why dsh-mindforge?
 
@@ -210,7 +211,7 @@ dsh-mindforge/
 │   ├── tools.ts        # ctx.tools registration (10 tools)
 │   ├── commands.ts     # /mindforge command registration
 │   ├── inject.ts       # agent/pre-step context injection
-│   ├── config.ts       # Config schema & defaults
+│   ├── config.ts        # Config schema & defaults
 │   └── types.ts        # TypeScript type definitions
 ├── tests/
 │   └── bridge.test.ts  # Unit tests
@@ -256,6 +257,6 @@ MIT — see [LICENSE](LICENSE).
 
 ## Powered by
 
-- [MindForge](https://github.com/opok-ops/MindForge) — AI Agent lifelong memory engine
+- [MindForge](https://github.com/opok-ops/MindForge) — AI Agent lifelong memory engine ⭐
 - [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — Agent runtime
 - [Cordis](https://github.com/koishijs/cordis) — Plugin framework
