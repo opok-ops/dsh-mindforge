@@ -10,10 +10,10 @@ export function registerCommands(
   const disposers: Array<() => void> = [];
 
   disposers.push(ctx.commands.register('mindforge', {
-    description: 'MindForge lifelong memory — status, recall, remember, search',
+    description: 'MindForge lifelong memory — status, recall, remember, search, compress, adaptive',
     args: [
       { name: 'subcommand', type: 'string', required: false,
-        description: 'status | recall <query> | remember <text> | forget <id> | graph | search <query>' },
+        description: 'status | recall <query> | remember <text> | forget <id> | graph | search <query> | compress | clusters | adaptive <query>' },
       { name: 'rest', type: 'string', required: false, description: 'Subcommand arguments' },
     ],
     async handler(args) {
@@ -60,8 +60,47 @@ export function registerCommands(
             ephemeral: false,
           };
         }
+        // ===== v3.0 新增 =====
+        case 'compress': {
+          // /mindforge compress          → dry-run 报告（安全默认）
+          // /mindforge compress apply    → 真正写入
+          const apply = (args.rest as string)?.trim() === 'apply';
+          const result = await bridge.compress({ dryRun: !apply });
+          const clusters = result.clusters_found ?? 0;
+          const summary = apply
+            ? `Compressed: **${result.memories_compressed ?? 0}** memories into ${clusters} clusters`
+            : `[dry-run] Would compress **${clusters}** clusters — run \`/mindforge compress apply\` to write`;
+          return {
+            content: `**Memory Compression**\n\n${summary}\n\n\`\`\`json\n${JSON.stringify(result, null, 2).slice(0, 2000)}\n\`\`\``,
+            ephemeral: false,
+          };
+        }
+        case 'clusters': {
+          const result = await bridge.compressList();
+          return {
+            content: `**Compressed Clusters** (total: ${result.total ?? 'N/A'})\n\n\`\`\`json\n${JSON.stringify(result, null, 2).slice(0, 2000)}\n\`\`\``,
+            ephemeral: false,
+          };
+        }
+        case 'adaptive': {
+          const query = args.rest as string;
+          if (!query) return { content: 'Usage: /mindforge adaptive <query>', ephemeral: true };
+          const result = await bridge.adaptiveSearch(query, 'dsh', 10);
+          const results = (result.results ?? []) as Array<Record<string, unknown>>;
+          if (!results.length) return { content: `Adaptive: "${query}"\n\n_No results found._`, ephemeral: false };
+          const lines = [
+            `**Adaptive Search: "${query}"**`,
+            `_strategy: ${result.strategy ?? 'adaptive'} · weights: ${JSON.stringify(result.weights ?? {})}_`,
+            '',
+          ];
+          for (const r of results.slice(0, 10)) {
+            lines.push(`**[${String(r.score ?? '?')}]** ${String(r.content_preview ?? r.content ?? '').slice(0, 200)}`);
+            lines.push('');
+          }
+          return { content: lines.join('\n'), ephemeral: false };
+        }
         default:
-          return { content: 'Subcommands: status, recall, remember, forget, graph, search', ephemeral: true };
+          return { content: 'Subcommands: status, recall, remember, forget, graph, search, compress, clusters, adaptive', ephemeral: true };
       }
     },
   }));

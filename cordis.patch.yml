@@ -28,6 +28,7 @@ mindforge:
   maxContextTokens: 2048
 
   # Tools registered on ctx.tools (model-callable)
+  # v3.0: 15 tools — 新增压缩三件套 + 自适应检索 + 关联推理 + explain 参数
   tools:
     - memory_add
     - memory_search
@@ -39,3 +40,8 @@ mindforge:
     - memory_lineage
     - graph_query
     - rerank_search
+    - memory_compress          # 压缩相似记忆簇（dry-run 默认安全）
+    - memory_compress_list     # 列出压缩簇
+    - memory_decompress        # 解压恢复源记忆
+    - memory_adaptive_search   # 会话感知自适应检索
+    - memory_link              # 关联推理

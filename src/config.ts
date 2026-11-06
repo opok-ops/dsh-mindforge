@@ -20,6 +20,12 @@ export const DEFAULT_CONFIG: MindForgeConfig = {
     'memory_lineage',
     'graph_query',
     'rerank_search',
+    // v3.0 新增（对齐 MindForge 6.3.5）
+    'memory_compress',
+    'memory_compress_list',
+    'memory_decompress',
+    'memory_adaptive_search',
+    'memory_link',
   ],
 };
 

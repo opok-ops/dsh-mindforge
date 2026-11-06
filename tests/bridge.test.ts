@@ -280,11 +280,127 @@ describe('MindForgeBridge', () => {
   });
 });
 
+describe('v3.0 — MindForge 6.3.5 commands', () => {
+  let bridge: MindForgeBridge;
+  let execSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    bridge = new MindForgeBridge({ cliPath: 'MindForge', dbPath: '/tmp/test.db' });
+    execSpy = vi.fn().mockResolvedValue({});
+    (bridge as any).execute = execSpy;
+  });
+
+  // ===== compress =====
+  it('compress: dry-run by default adds --dry-run flag', async () => {
+    await bridge.compress({ dryRun: true });
+    const args = execSpy.mock.calls[0][0];
+    expect(args[0]).toBe('compress');
+    expect(args).toContain('--dry-run');
+  });
+
+  it('compress: full options map to CLI flags', async () => {
+    await bridge.compress({
+      threshold: 0.8,
+      dryRun: false,
+      category: 'fact',
+      minClusterSize: 5,
+    });
+    const args = execSpy.mock.calls[0][0];
+    expect(args).toEqual([
+      'compress',
+      '--threshold', '0.8',
+      '--category', 'fact',
+      '--min-cluster-size', '5',
+    ]);
+    expect(args).not.toContain('--dry-run');
+  });
+
+  it('compress: no options = bare compress command', async () => {
+    await bridge.compress();
+    expect(execSpy.mock.calls[0][0]).toEqual(['compress']);
+  });
+
+  // ===== compress-list =====
+  it('compressList: calls compress-list with no args', async () => {
+    await bridge.compressList();
+    expect(execSpy.mock.calls[0][0]).toEqual(['compress-list']);
+  });
+
+  // ===== decompress =====
+  it('decompress: passes cluster_id as positional', async () => {
+    await bridge.decompress('cluster-123');
+    expect(execSpy.mock.calls[0][0]).toEqual(['decompress', 'cluster-123']);
+  });
+
+  // ===== adaptive-search =====
+  it('adaptiveSearch: positional query + --session + --limit', async () => {
+    await bridge.adaptiveSearch('best pizza', 'dsh', 5);
+    expect(execSpy.mock.calls[0][0]).toEqual([
+      'adaptive-search', 'best pizza',
+      '--session', 'dsh',
+      '--limit', '5',
+    ]);
+  });
+
+  it('adaptiveSearch: defaults session=dsh limit=10', async () => {
+    await bridge.adaptiveSearch('q');
+    expect(execSpy.mock.calls[0][0]).toEqual([
+      'adaptive-search', 'q',
+      '--session', 'dsh',
+      '--limit', '10',
+    ]);
+  });
+
+  // ===== memory-link =====
+  it('link: agent + memory_id positionals + --top-k + --days', async () => {
+    await bridge.link('mem-42', 20, 30);
+    expect(execSpy.mock.calls[0][0]).toEqual([
+      'memory-link', 'default', 'mem-42',
+      '--top-k', '20',
+      '--days', '30',
+    ]);
+  });
+
+  it('link: custom agentId from bridge options', async () => {
+    const b2 = new MindForgeBridge({ cliPath: 'MindForge', dbPath: '/tmp/t.db', agentId: 'helper' });
+    const spy2 = vi.fn().mockResolvedValue({});
+    (b2 as any).execute = spy2;
+    await b2.link('mem-1');
+    expect(spy2.mock.calls[0][0]).toEqual([
+      'memory-link', 'helper', 'mem-1',
+      '--top-k', '10',
+      '--days', '90',
+    ]);
+  });
+
+  // ===== search --explain =====
+  it('search: explain=false omits --explain', async () => {
+    await bridge.search('query', 10, false);
+    expect(execSpy.mock.calls[0][0]).not.toContain('--explain');
+    expect(execSpy.mock.calls[0][0]).toEqual(['search', 'query', '--limit', '10']);
+  });
+
+  it('search: explain=true appends --explain after limit', async () => {
+    await bridge.search('query', 5, true);
+    const args = execSpy.mock.calls[0][0];
+    expect(args).toEqual(['search', 'query', '--limit', '5', '--explain']);
+  });
+});
+
 describe('Config', () => {
-  it('should have default config with 10 tools', () => {
-    expect(DEFAULT_CONFIG.tools).toHaveLength(10);
+  it('should have default config with 15 tools (v3.0)', () => {
+    expect(DEFAULT_CONFIG.tools).toHaveLength(15);
     expect(DEFAULT_CONFIG.injectOnStep).toBe(true);
     expect(DEFAULT_CONFIG.maxContextTokens).toBe(2048);
+  });
+
+  it('should include v3.0 compression/adaptive/link tools by default (v3.0)', () => {
+    const t = DEFAULT_CONFIG.tools;
+    expect(t).toContain('memory_compress');
+    expect(t).toContain('memory_compress_list');
+    expect(t).toContain('memory_decompress');
+    expect(t).toContain('memory_adaptive_search');
+    expect(t).toContain('memory_link');
   });
 
   it('should have default agentId', () => {

@@ -20,12 +20,13 @@ const TOOLS: Record<string, Omit<ToolDefinition, 'handler'>> = {
   },
   memory_search: {
     name: 'memory_search',
-    description: 'Search memories using 6-way fusion: vector recall + FTS5 + TF-IDF + fuzzy + query expansion + cross-encoder reranking.',
+    description: 'Search memories using 6-way fusion: vector recall + FTS5 + TF-IDF + fuzzy + query expansion + cross-encoder reranking. Set explain=true for per-result score breakdown (which recall path won and why).',
     schema: {
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Search query' },
         limit: { type: 'integer', minimum: 1, maximum: 50, default: 10 },
+        explain: { type: 'boolean', default: false, description: 'Include per-result score breakdown (4-way recall scores, winning path, fusion detail). Zero overhead when false.' },
       },
       required: ['query'],
     },
@@ -102,6 +103,61 @@ const TOOLS: Record<string, Omit<ToolDefinition, 'handler'>> = {
       required: ['query'],
     },
   },
+  // ===== v3.0 新增（对齐 MindForge 6.3.5）=====
+  memory_compress: {
+    name: 'memory_compress',
+    description: 'Compress similar memory clusters: TF-IDF cosine clustering merges near-duplicate memories into one summary memory (sources archived, recoverable via decompress). DRY-RUNS by default — set dry_run=false to actually write.',
+    schema: {
+      type: 'object',
+      properties: {
+        threshold: { type: 'number', minimum: 0.5, maximum: 0.99, default: 0.75, description: 'Similarity threshold (higher = stricter clustering)' },
+        dry_run: { type: 'boolean', default: true, description: 'Report clusters only, do not write. SAFETY DEFAULT: true. Set false to actually compress.' },
+        category: { type: 'string', description: 'Restrict compression to one category' },
+        min_cluster_size: { type: 'integer', minimum: 2, maximum: 20, default: 3, description: 'Minimum memories per cluster (below this, no cluster forms)' },
+      },
+    },
+  },
+  memory_compress_list: {
+    name: 'memory_compress_list',
+    description: 'List all compressed memory clusters (with member memory counts and archive status).',
+    schema: { type: 'object', properties: {} },
+  },
+  memory_decompress: {
+    name: 'memory_decompress',
+    description: 'Restore a compressed cluster: source memories return to independent recall. Find cluster IDs via memory_compress_list.',
+    schema: {
+      type: 'object',
+      properties: {
+        cluster_id: { type: 'string', description: 'Cluster ID to decompress' },
+      },
+      required: ['cluster_id'],
+    },
+  },
+  memory_adaptive_search: {
+    name: 'memory_adaptive_search',
+    description: 'Adaptive retrieval: session-aware weights tuned by usage frequency, recency, and relevance. Gets better the more the session uses it.',
+    schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query' },
+        limit: { type: 'integer', minimum: 1, maximum: 50, default: 10 },
+      },
+      required: ['query'],
+    },
+  },
+  memory_link: {
+    name: 'memory_link',
+    description: 'Association reasoning: given a memory, find related memories (link strength, shared tags, temporal proximity).',
+    schema: {
+      type: 'object',
+      properties: {
+        memory_id: { type: 'string', description: 'Target memory ID' },
+        top_k: { type: 'integer', minimum: 1, maximum: 50, default: 10 },
+        days: { type: 'integer', minimum: 1, maximum: 365, default: 90, description: 'Lookback window in days' },
+      },
+      required: ['memory_id'],
+    },
+  },
 };
 
 export function registerTools(
@@ -119,6 +175,7 @@ export function registerTools(
     memory_search: (args) => bridge.search(
       args.query as string,
       (args.limit as number) ?? 10,
+      (args.explain as boolean) ?? false,
     ),
     memory_context: (args) => bridge.context(
       args.query as string,
@@ -136,6 +193,27 @@ export function registerTools(
     rerank_search: (args) => bridge.rerank(
       args.query as string,
       (args.limit as number) ?? 10,
+    ),
+    // ===== v3.0 新增 =====
+    memory_compress: (args) => bridge.compress({
+      threshold: args.threshold as number | undefined,
+      // 安全默认：调用方未显式传 dry_run=false 时一律按 dry-run 执行。
+      // agent 自动调用工具时漏参数不能导致记忆被意外合并。
+      dryRun: args.dry_run === undefined ? true : (args.dry_run as boolean),
+      category: args.category as string | undefined,
+      minClusterSize: args.min_cluster_size as number | undefined,
+    }),
+    memory_compress_list: () => bridge.compressList(),
+    memory_decompress: (args) => bridge.decompress(args.cluster_id as string),
+    memory_adaptive_search: (args) => bridge.adaptiveSearch(
+      args.query as string,
+      'dsh',
+      (args.limit as number) ?? 10,
+    ),
+    memory_link: (args) => bridge.link(
+      args.memory_id as string,
+      (args.top_k as number) ?? 10,
+      (args.days as number) ?? 90,
     ),
   };
 

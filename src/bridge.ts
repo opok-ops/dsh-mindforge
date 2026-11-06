@@ -6,10 +6,20 @@ import type {
   RecallRawResponse,
   RerankRawResponse,
   ContextRawResponse,
+  CompressResponse,
+  CompressListResponse,
+  AdaptiveSearchResponse,
+  LinkResponse,
 } from './types.js';
 
 /**
  * MindForge CLI 桥接层
+ *
+ * v3.0 (MindForge 6.3.5 适配): 在 v0.2.x 基础上新增六个命令桥接——
+ * - compress / compress-list / decompress（记忆压缩全家桶，MindForge 6.3.5）
+ * - adaptive-search（会话感知自适应检索，MindForge 6.3.5）
+ * - memory-link（关联推理，MindForge v5.3.6+，CLI 无 --json，靠 parseOutput 容错）
+ * - search --explain（检索得分分解，MindForge 6.3.0）
  *
  * v0.2.0 (v5.5.6 适配): 重写为与 MindForge CLI v5.5.6 实际签名完全对齐：
  * - importance: 数字 1-10 自动映射为 LOW/MEDIUM/HIGH/CRITICAL 枚举
@@ -160,10 +170,11 @@ export class MindForgeBridge {
     return this.execute(args);
   }
 
-  async search(query: string, limit = 10): Promise<SearchResponse> {
-    return this.execute([
-      'search', query, '--limit', String(limit),
-    ]) as Promise<SearchResponse>;
+  async search(query: string, limit = 10, explain = false): Promise<SearchResponse> {
+    const args = ['search', query, '--limit', String(limit)];
+    // v6.3.0+：检索得分分解（四路召回原始分 + 胜出路径 + 融合明细）
+    if (explain) args.push('--explain');
+    return this.execute(args) as Promise<SearchResponse>;
   }
 
   async context(query: string, maxTokens = 2048): Promise<ContextResponse> {
@@ -205,12 +216,10 @@ export class MindForgeBridge {
   }
 
   async reflection(category?: string): Promise<unknown> {
-    // CLI 签名: memory-reflection <agent> [--days]（category 参数 CLI 未暴露）
+    // CLI 签名: memory-reflection <agent> [--days]
+    // （已核实至 MindForge 6.3.5：CLI 仍未暴露 --category，参数保留但忽略）
     const args = ['memory-reflection', this.agentId];
-    if (category) {
-      // 通过 --days 无法表达 category；这里保留参数但忽略 category
-      // 若未来 CLI 支持 --category 再透传
-    }
+    void category;
     return this.execute(args);
   }
 
@@ -257,5 +266,77 @@ export class MindForgeBridge {
 
   async health(): Promise<unknown> {
     return this.execute(['health']);
+  }
+
+  // ===== v3.0 新增：MindForge 6.3.5 能力桥接 =====
+
+  /**
+   * 压缩相似记忆簇（MindForge 6.3.5 MemoryCompressor）。
+   * TF-IDF 余弦相似度贪心聚类，把相似记忆合并为一条摘要记忆，源记忆归档。
+   * @param opts.threshold    相似度阈值（0-1，CLI 默认 0.75）
+   * @param opts.dryRun       只报告将压缩的簇，不写入（强烈建议 agent 先 dry-run）
+   * @param opts.category     限定类别
+   * @param opts.minClusterSize 最小簇大小（CLI 默认 3，低于该值不成簇）
+   */
+  async compress(opts?: {
+    threshold?: number;
+    dryRun?: boolean;
+    category?: string;
+    minClusterSize?: number;
+  }): Promise<CompressResponse> {
+    const args = ['compress'];
+    if (opts?.threshold !== undefined) {
+      args.push('--threshold', String(opts.threshold));
+    }
+    if (opts?.dryRun) args.push('--dry-run');
+    if (opts?.category) args.push('--category', opts.category);
+    if (opts?.minClusterSize !== undefined) {
+      args.push('--min-cluster-size', String(opts.minClusterSize));
+    }
+    return this.execute(args) as Promise<CompressResponse>;
+  }
+
+  /** 列出全部压缩簇（MindForge 6.3.5） */
+  async compressList(): Promise<CompressListResponse> {
+    return this.execute(['compress-list']) as Promise<CompressListResponse>;
+  }
+
+  /**
+   * 解压压缩簇：源记忆恢复独立召回（MindForge 6.3.5）。
+   * 注意：decompress 子命令 CLI 无 --json 支持，parseOutput 容错提取。
+   */
+  async decompress(clusterId: string): Promise<unknown> {
+    return this.execute(['decompress', clusterId]);
+  }
+
+  /**
+   * 自适应检索（MindForge 6.3.5 AdaptiveContextEngine）。
+   * 会话感知：按使用频率/时近度/相关性动态调整检索权重，长期用越用越准。
+   * @param session 会话 ID（用于会话内权重状态，默认 "cli"）
+   */
+  async adaptiveSearch(
+    query: string,
+    session = 'dsh',
+    limit = 10,
+  ): Promise<AdaptiveSearchResponse> {
+    return this.execute([
+      'adaptive-search', query,
+      '--session', session,
+      '--limit', String(limit),
+    ]) as Promise<AdaptiveSearchResponse>;
+  }
+
+  /**
+   * 记忆关联推理（MindForge v5.3.6+）。
+   * 给定一条记忆，找出与之关联的其他记忆（关联强度、共同标签、时间邻近等）。
+   * CLI 该子命令未接入 --json，输出为人类可读表格；parseOutput 会尽力
+   * 提取 JSON（失败时原样返回文本，LinkResponse 联合类型兜底）。
+   */
+  async link(memoryId: string, topK = 10, days = 90): Promise<LinkResponse> {
+    return this.execute([
+      'memory-link', this.agentId, memoryId,
+      '--top-k', String(topK),
+      '--days', String(days),
+    ]) as Promise<LinkResponse>;
   }
 }
