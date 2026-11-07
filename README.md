@@ -109,6 +109,9 @@ mindforge:
   # dbPath: ~/.MindForge/data/store/memory.db
   # keyFile: ~/.MindForge/data/store/key.bin
   agentId: default            # agent id used for add/context/recall/reflection/reinforce
+                               # ⚠ recall is source_agent-scoped: CLI-added memories
+                               # default to --agent cli and are invisible to recall
+                               # under agentId 'default' (search/context still see them)
   timeoutMs: 30000            # CLI subprocess timeout in ms (raise for very large stores)
   storageScope: global         # global | workspace | custom
   injectOnStep: true           # auto-inject memories before each model step
