@@ -1,6 +1,6 @@
 {
   "name": "dsh-mindforge",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Encrypted 4-layer lifelong memory for DeepSeek Harness — powered by MindForge",
   "type": "module",
   "main": "lib/index.js",
