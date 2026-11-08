@@ -56,7 +56,7 @@ jobs:
       - name: Install MindForge CLI (pinned release)
         run: |
           python -m pip install --upgrade pip
-          pip install "git+https://github.com/opok-ops/MindForge.git@v6.3.6"
+          pip install "git+https://github.com/opok-ops/MindForge.git@v6.4.0"
           MindForge --version
 
       - name: Install dependencies

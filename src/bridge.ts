@@ -1,4 +1,8 @@
 import { spawn } from 'node:child_process';
+import { MindForgeDaemon } from './daemon-client.js';
+
+/** daemon 路由哨兵：调用应回退 CLI 子进程路径 */
+const FALLBACK: unique symbol = Symbol('fallback');
 import type {
   SearchResponse,
   StatsResponse,
@@ -37,6 +41,11 @@ export class MindForgeBridge {
   private keyFile?: string;
   private agentId: string;
   private timeoutMs: number;
+  /** v3.1.0：常驻 daemon 模式（对齐 MindForge v6.4.0），默认关闭走 CLI */
+  private useDaemon: boolean;
+  private daemon?: MindForgeDaemon;
+  /** daemon 熔断标记：启动/调用失败后本实例降级为纯 CLI 模式 */
+  private daemonBroken = false;
 
   constructor(opts: {
     cliPath: string;
@@ -44,12 +53,52 @@ export class MindForgeBridge {
     keyFile?: string;
     agentId?: string;
     timeoutMs?: number;
+    /** 启用常驻 daemon（单请求 ~2.5ms vs CLI 子进程 ~698ms） */
+    daemon?: boolean;
   }) {
     this.cliPath = opts.cliPath;
     this.dbPath = opts.dbPath;
     this.keyFile = opts.keyFile;
     this.agentId = opts.agentId || 'default';
     this.timeoutMs = opts.timeoutMs ?? 30000;
+    this.useDaemon = opts.daemon ?? false;
+  }
+
+  /**
+   * daemon 路由层：命中返回引擎 raw dict，未启用/熔断返回 FALLBACK 哨兵。
+   * 输出契约与 CLI --json 完全一致（MindForge v6.4.0 保证），上层转换逻辑复用。
+   */
+  private async dcall(
+    cmd: string,
+    args: Record<string, unknown>,
+  ): Promise<unknown> {
+    if (!this.useDaemon || this.daemonBroken || !this.dbPath) return FALLBACK;
+    try {
+      if (!this.daemon) {
+        this.daemon = new MindForgeDaemon({
+          cliPath: this.cliPath,
+          dbPath: this.dbPath,
+          keyFile: this.keyFile,
+          timeoutMs: this.timeoutMs,
+        });
+        await this.daemon.start();
+      }
+      return await this.daemon.call(cmd, args);
+    } catch {
+      // 熔断：daemon 启动/调用失败 → 降级 CLI 子进程（可用性优先）
+      this.daemonBroken = true;
+      try { await this.daemon?.stop(); } catch { /* noop */ }
+      this.daemon = undefined;
+      return FALLBACK;
+    }
+  }
+
+  /** 显式停机（进程退出前调用，避免悬挂子进程）。 */
+  async shutdownDaemon(): Promise<void> {
+    if (this.daemon) {
+      try { await this.daemon.stop(); } catch { /* noop */ }
+      this.daemon = undefined;
+    }
   }
 
   /** 构造全局参数（--db-path / --key-file 必须位于子命令之前） */
@@ -159,18 +208,31 @@ export class MindForgeBridge {
     importance?: number | string;
     layer?: string;
   }): Promise<unknown> {
+    const imp = this.mapImportance(opts?.importance);
+    const viaDaemon = await this.dcall('add', {
+      content,
+      agent: this.agentId,
+      category: opts?.category,
+      tags: opts?.tags,
+      importance: imp,
+      layer: opts?.layer,
+    });
+    if (viaDaemon !== FALLBACK) return viaDaemon;
     const args = ['add', content];
     // 使用与 context/recall 相同的 agentId，保证添加的记忆可被召回
     args.push('--agent', this.agentId);
     if (opts?.category) args.push('--category', opts.category);
     if (opts?.tags?.length) args.push('--tags', opts.tags.join(','));
-    const imp = this.mapImportance(opts?.importance);
     if (imp) args.push('--importance', imp);
     if (opts?.layer) args.push('--layer', opts.layer);
     return this.execute(args);
   }
 
   async search(query: string, limit = 10, explain = false): Promise<SearchResponse> {
+    const viaDaemon = await this.dcall('search', {
+      query, limit, explain, agent: this.agentId,
+    });
+    if (viaDaemon !== FALLBACK) return viaDaemon as SearchResponse;
     const args = ['search', query, '--limit', String(limit)];
     // v6.3.0+：检索得分分解（四路召回原始分 + 胜出路径 + 融合明细）
     if (explain) args.push('--explain');
@@ -178,6 +240,17 @@ export class MindForgeBridge {
   }
 
   async context(query: string, maxTokens = 2048): Promise<ContextResponse> {
+    const viaDaemon = await this.dcall('memory-context', {
+      agent: this.agentId, query, max_tokens: maxTokens,
+    }) as ContextRawResponse | symbol;
+    if (viaDaemon !== FALLBACK) {
+      const raw = viaDaemon as ContextRawResponse;
+      return {
+        context: raw?.context ?? '',
+        token_estimate: raw?.token_estimate ?? 0,
+        memories_used: raw?.included_count ?? raw?.memories_used ?? 0,
+      };
+    }
     const raw = await this.execute([
       'memory-context', this.agentId, query, '--max-tokens', String(maxTokens),
     ]) as ContextRawResponse;
@@ -189,10 +262,35 @@ export class MindForgeBridge {
   }
 
   async stats(): Promise<StatsResponse> {
+    const viaDaemon = await this.dcall('stats', {});
+    if (viaDaemon !== FALLBACK) return viaDaemon as StatsResponse;
     return this.execute(['stats']) as Promise<StatsResponse>;
   }
 
   async recall(query: string, limit = 5): Promise<SearchResponse> {
+    const viaDaemon = await this.dcall('memory-recall', {
+      agent: this.agentId, query, top_k: limit,
+    }) as RecallRawResponse | symbol;
+    if (viaDaemon !== FALLBACK) {
+      const raw = viaDaemon as RecallRawResponse;
+      const recalled = raw?.recalled ?? [];
+      const chunks = recalled.map((r) => ({
+        memory_id: r.memory_id ?? '',
+        content: r.content_preview ?? '',
+        category: r.category ?? '',
+        layer: r.layer ?? '',
+        relevance_score: r.score ?? 0,
+        tags: [],
+      }));
+      return {
+        chunks,
+        total_found: raw?.total_matched ?? chunks.length,
+        query_time_ms: 0,
+        strategy_used: 'memory-recall',
+        token_estimate: 0,
+        layers_used: [],
+      };
+    }
     const raw = await this.execute([
       'memory-recall', this.agentId, query, '--top-k', String(limit),
     ]) as RecallRawResponse;
@@ -293,11 +391,19 @@ export class MindForgeBridge {
     if (opts?.minClusterSize !== undefined) {
       args.push('--min-cluster-size', String(opts.minClusterSize));
     }
+    const viaDaemon = await this.dcall('compress', {
+      dry_run: opts?.dryRun ?? false,
+      threshold: opts?.threshold,
+      min_cluster_size: opts?.minClusterSize,
+    });
+    if (viaDaemon !== FALLBACK) return viaDaemon as CompressResponse;
     return this.execute(args) as Promise<CompressResponse>;
   }
 
   /** 列出全部压缩簇（MindForge 6.3.5） */
   async compressList(): Promise<CompressListResponse> {
+    const viaDaemon = await this.dcall('compress-list', {});
+    if (viaDaemon !== FALLBACK) return viaDaemon as CompressListResponse;
     return this.execute(['compress-list']) as Promise<CompressListResponse>;
   }
 
@@ -306,6 +412,8 @@ export class MindForgeBridge {
    * 注意：decompress 子命令 CLI 无 --json 支持，parseOutput 容错提取。
    */
   async decompress(clusterId: string): Promise<unknown> {
+    const viaDaemon = await this.dcall('decompress', { cluster_id: clusterId });
+    if (viaDaemon !== FALLBACK) return viaDaemon;
     return this.execute(['decompress', clusterId]);
   }
 
@@ -319,6 +427,10 @@ export class MindForgeBridge {
     session = 'dsh',
     limit = 10,
   ): Promise<AdaptiveSearchResponse> {
+    const viaDaemon = await this.dcall('adaptive-search', {
+      query, session, limit,
+    });
+    if (viaDaemon !== FALLBACK) return viaDaemon as AdaptiveSearchResponse;
     return this.execute([
       'adaptive-search', query,
       '--session', session,
