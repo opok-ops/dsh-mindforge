@@ -3,6 +3,38 @@
 All notable changes to dsh-mindforge are documented here. Versions follow
 [semver](https://semver.org/). The engine underneath — [MindForge](https://github.com/opok-ops/MindForge) — is versioned separately; each dsh-mindforge release states the MindForge version its bridge layer targets.
 
+## [3.1.0] — 2026-11-08
+
+Daemon mode — bridge to MindForge v6.4.0's resident daemon.
+
+### Added
+
+- **Daemon mode** (`new MindForgeBridge({ ..., daemon: true })`): routes
+  the 9 core commands (add / search / memory-recall / memory-context /
+  stats / compress / compress-list / decompress / adaptive-search)
+  through MindForge v6.4.0's resident daemon — line-JSON over stdio,
+  engine resident in a long-lived process. Per-request latency drops
+  from **~698ms (CLI subprocess spawn)** to **~2.5ms** (~280×, measured
+  both sides 2026-11-08). Default stays off (`daemon: false`) — zero
+  impact on existing users.
+- **Circuit breaker**: if the daemon fails to start or a call errors,
+  the bridge degrades to the CLI subprocess path for the rest of the
+  instance's lifetime — availability first, latency second.
+- `MindForgeDaemon` client class (`src/daemon-client.ts`): protocol
+  implementation with request serialization, per-request timeout, and
+  graceful `shutdown`.
+- `bridge.shutdownDaemon()` for explicit lifecycle control.
+- E2E: new `tests/e2e/daemon-mode.e2e.ts` — 10 real-subprocess
+  assertions (contract parity with CLI path, latency benefit, circuit
+  breaker fallback). CI e2e job now pins MindForge at **v6.4.0**.
+
+### Compatibility
+
+- Daemon mode requires MindForge ≥ 6.4.0 (`mindforge daemon`
+  subcommand). With older MindForge the circuit breaker silently falls
+  back to CLI — mixed-version safe.
+- CLI mode (default) unchanged.
+
 ## [3.0.1] — 2026-11-08
 
 First release prepared under the real-bridge CI guard. No new tools;
