@@ -3,6 +3,36 @@
 All notable changes to dsh-mindforge are documented here. Versions follow
 [semver](https://semver.org/). The engine underneath — [MindForge](https://github.com/opok-ops/MindForge) — is versioned separately; each dsh-mindforge release states the MindForge version its bridge layer targets.
 
+## [3.0.1] — 2026-11-08
+
+First release prepared under the real-bridge CI guard. No new tools;
+bridge contract fixed, CI added.
+
+### Fixed
+
+- **`CompressResponse` contract bug**: `clusters_found` /
+  `memories_compressed` were declared and read, but the MindForge CLI
+  has never emitted those keys — every `/mindforge compress` report has
+  shown **0** clusters / memories since v3.0.0. The tool now reads the
+  real key `compressed_count` (legacy keys kept as `@deprecated` for
+  compatibility); `skipped_strict` is typed.
+- `/mindforge compress` summary text now reflects the real cluster count
+  instead of a hardcoded-looking zero.
+
+### Added (repo infrastructure — not shipped in the package)
+
+- **First CI** for this repository (`.github/workflows/ci.yml`):
+  - `test` — build + 48 mock unit tests;
+  - `e2e` — real-bridge end-to-end guard: installs MindForge CLI
+    pinned at **v6.3.6** (git tag), runs 16 real-subprocess assertions
+    (seed → search/explain/recall → compression chain dry-run/apply/
+    list/decompress → adaptive-search), mirroring
+    `opok-ops/MindForge scripts/e2e_cli.py` added the same day.
+- `tests/e2e/real-bridge.e2e.ts` + `vitest.config.e2e.ts` (separate
+  entry so `npm test` stays CLI-free) + `npm run test:e2e`.
+- This is the guard that caught the `CompressResponse` bug above —
+  mock units stayed green while real output keys were never checked.
+
 ## [3.0.0] — 2026-11-07
 
 Aligned with **MindForge 6.3.5**. Tools 10 → 15, bridge signature audit
