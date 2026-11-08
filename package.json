@@ -14,7 +14,8 @@
     "dev": "tsdown --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test:e2e": "vitest run --config vitest.config.e2e.ts"
   },
   "keywords": [
     "dsh",

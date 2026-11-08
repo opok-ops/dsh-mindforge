@@ -159,10 +159,16 @@ export interface ScoreBreakdown {
  * 结构随 CLI 版本演进，字段全部 optional，未知字段原样透传
  */
 export interface CompressResponse {
-  dry_run?: boolean;
-  clusters_found?: number;
-  memories_compressed?: number;
+  /** CLI 真实键（2026-11-08 E2E 对齐）：本次压缩的簇数 */
+  compressed_count?: number;
+  /** 各簇明细（cluster_id/summary_id/source_ids/...），dry-run 与 apply 均返回 */
   clusters?: Array<Record<string, unknown>>;
+  /** 跳过的 STRICT 隐私级记忆数 */
+  skipped_strict?: number;
+  /** @deprecated 2026-11-08 前的误标字段——CLI 从未输出过，仅为兼容保留 */
+  clusters_found?: number;
+  /** @deprecated 同上，从未有真实输出 */
+  memories_compressed?: number;
   [key: string]: unknown;
 }
 

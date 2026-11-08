@@ -66,10 +66,12 @@ export function registerCommands(
           // /mindforge compress apply    → 真正写入
           const apply = (args.rest as string)?.trim() === 'apply';
           const result = await bridge.compress({ dryRun: !apply });
-          const clusters = result.clusters_found ?? 0;
+          // CLI 真实键为 compressed_count（2026-11-08 E2E 固化时对齐；
+          // 此前按 clusters_found/memories_compressed 取值恒为 0）
+          const clusters = result.compressed_count ?? result.clusters_found ?? 0;
           const summary = apply
-            ? `Compressed: **${result.memories_compressed ?? 0}** memories into ${clusters} clusters`
-            : `[dry-run] Would compress **${clusters}** clusters — run \`/mindforge compress apply\` to write`;
+            ? `Compressed: **${clusters}** cluster(s)`
+            : `[dry-run] Would compress **${clusters}** cluster(s) — run \`/mindforge compress apply\` to write`;
           return {
             content: `**Memory Compression**\n\n${summary}\n\n\`\`\`json\n${JSON.stringify(result, null, 2).slice(0, 2000)}\n\`\`\``,
             ephemeral: false,
