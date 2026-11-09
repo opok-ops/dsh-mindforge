@@ -13,7 +13,7 @@
 
 ## What's New in v3.1
 
-- **Daemon mode** — `new MindForgeBridge({ ..., daemon: true })` keeps a resident MindForge daemon process: **single-request p50 ~2.5ms vs 698ms cold CLI spawn** (280× faster). Auto **circuit breaker**: falls back to plain CLI spawns if the daemon dies or the protocol mismatches — memory never becomes a single point of failure.
+- **Daemon mode** — `new MindForgeBridge({ ..., daemon: true })` keeps a resident MindForge daemon process: **single-request p50 ~2.5ms vs 400–700ms cold CLI spawn** (two orders of magnitude; 2026-11-09 re-bench: 401ms p50, ~160×). Auto **circuit breaker**: falls back to plain CLI spawns if the daemon dies or the protocol mismatches — memory never becomes a single point of failure.
 - **Bridges MindForge v6.4.0** — the resident daemon shipped in the engine's latest release.
 
 ## What's New in v3.0
@@ -119,7 +119,7 @@ mindforge:
                                # default to --agent cli and are invisible to recall
                                # under agentId 'default' (search/context still see them)
   timeoutMs: 30000            # CLI subprocess timeout in ms (raise for very large stores)
-  daemon: false                # v3.1: resident daemon mode (~2.5ms vs 698ms per request,
+  daemon: false                # v3.1: resident daemon mode (~2.5ms vs 400–700ms per request,
                                #       needs MindForge ≥ 6.4.0; auto-falls back to CLI spawns)
   storageScope: global         # global | workspace | custom
   injectOnStep: true           # auto-inject memories before each model step
