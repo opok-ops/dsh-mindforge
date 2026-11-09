@@ -10,7 +10,7 @@
     "cordis.patch.yml"
   ],
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && node scripts/copy-dts.mjs",
     "dev": "tsdown --watch",
     "test": "vitest run",
     "test:watch": "vitest",

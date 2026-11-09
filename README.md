@@ -3,12 +3,18 @@
 > Encrypted 4-layer lifelong memory for DeepSeek Harness — powered by [MindForge](https://github.com/opok-ops/MindForge)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/opok-ops/dsh-mindforge/actions/workflows/ci.yml/badge.svg)](https://github.com/opok-ops/dsh-mindforge/actions/workflows/ci.yml)
 [![dsh-plugin](https://img.shields.io/badge/DSH-Plugin-purple.svg)](https://github.com/topics/dsh-plugin)
-[![v3.0.0](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
-[![MindForge 6.3.5](https://img.shields.io/badge/MindForge-6.3.5-orange.svg)](https://github.com/opok-ops/MindForge)
+[![v3.1.0](https://img.shields.io/badge/version-3.1.0-blue.svg)](CHANGELOG.md)
+[![MindForge 6.4.0](https://img.shields.io/badge/MindForge-6.4.0-orange.svg)](https://github.com/opok-ops/MindForge)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/)
 [![Node 22+](https://img.shields.io/badge/Node-22+-green.svg)](https://nodejs.org/)
 [![MindForge Stars](https://img.shields.io/github/stars/opok-ops/MindForge.svg?label=MindForge%20%E2%AD%90)](https://github.com/opok-ops/MindForge/stargazers)
+
+## What's New in v3.1
+
+- **Daemon mode** — `new MindForgeBridge({ ..., daemon: true })` keeps a resident MindForge daemon process: **single-request p50 ~2.5ms vs 698ms cold CLI spawn** (280× faster). Auto **circuit breaker**: falls back to plain CLI spawns if the daemon dies or the protocol mismatches — memory never becomes a single point of failure.
+- **Bridges MindForge v6.4.0** — the resident daemon shipped in the engine's latest release.
 
 ## What's New in v3.0
 
@@ -113,6 +119,8 @@ mindforge:
                                # default to --agent cli and are invisible to recall
                                # under agentId 'default' (search/context still see them)
   timeoutMs: 30000            # CLI subprocess timeout in ms (raise for very large stores)
+  daemon: false                # v3.1: resident daemon mode (~2.5ms vs 698ms per request,
+                               #       needs MindForge ≥ 6.4.0; auto-falls back to CLI spawns)
   storageScope: global         # global | workspace | custom
   injectOnStep: true           # auto-inject memories before each model step
   maxContextTokens: 2048
@@ -134,7 +142,7 @@ mindforge:
     - memory_link              # v3.0
 ```
 
-> **Requires MindForge ≥ 6.3.5** for the v3.0 tools (`memory_compress*`, `memory_decompress`, `memory_adaptive_search`) and `search --explain`. The first 10 tools work with MindForge ≥ 5.5.6.
+> **Requires MindForge ≥ 6.3.5** for the v3.0 tools (`memory_compress*`, `memory_decompress`, `memory_adaptive_search`) and `search --explain`; **≥ 6.4.0** for v3.1 daemon mode (`daemon: true`). The first 10 tools work with MindForge ≥ 5.5.6.
 
 ## Usage
 
